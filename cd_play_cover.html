@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CD 播放封面</title>
+    <!-- 引入 Google Fonts 的手写体字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: black;
+        }
+
+        .player-container {
+            background-color: #333;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        canvas {
+            border: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #lyrics {
+            width: 400px;
+            height: 50px;
+            overflow: hidden;
+            margin-top: 20px;
+            text-align: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 18px;
+            color: white;
+        }
+
+        .control-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .control-buttons button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .control-buttons button:hover {
+            color: #1ed760;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="player-container">
+        <canvas id="cdCanvas" width="400" height="400"></canvas>
+        <div id="lyrics"></div>
+        <div class="control-buttons">
+            <button id="prev-button">⏮</button>
+            <button id="play-button">▶</button>
+            <button id="next-button">⏭</button>
+            <button id="like-button">🤍</button>
+        </div>
+        <audio id="audio" src="your-audio.mp3"></audio>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cdCanvas');
+        const ctx = canvas.getContext('2d');
+        const cdRadius = 120;
+        const cdCenterX = canvas.width / 2;
+        const cdCenterY = canvas.height / 2;
+        const holeRadius = 20;
+        let angle = 0;
+        let isPlaying = true;
+        let lyricInterval;
+
+        const audio = document.getElementById('audio');
+        const albumName = "若思念便思念";
+        const lyricsDiv = document.getElementById('lyrics');
+        const playButton = document.getElementById('play-button');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const likeButton = document.getElementById('like-button');
+
+        const newLyrics = `“月光 出来哩哦”
+剪不断的时间
+故事里有牵绊
+豫州夜渐远
+人在 丹霞山南
+响起那时方言
+谁又在谁心间
+在北边
+只等一只客家船
+龙门山 听到雁归南
+故楼圆 北望有炊烟
+我在你心间
+是你我执意相守的诺言
+云开 我知道你在眷恋
+眷恋再不会走远
+即使相隔千里也并不遥远
+风起 你知道我在期盼
+期盼你回到身边
+人若思念便思念 终会相见
+客家童谣：
+“月光光 秀才郎
+骑白马 过莲塘
+莲塘背 种韭菜
+韭菜花 结亲家” [14]
+曲未散 萦绕山海间
+心尤在 弹指间聚散
+你在我心间
+是你我执意相守的诺言
+云开 我知道你在眷恋
+眷恋再不会走远
+即使相隔千里也并不遥远
+风起 你知道我在期盼
+期盼你回到身边
+人若思念便思念 终会相见
+啊
+飞鸟 看故事里的过往
+我和你穿越时光
+时光里旧模样 是彼此惆怅
+月光 把粼粼水面点亮
+点亮挚爱的方向
+人若思念便思念 终会相见
+人若思念便思念 终会相见`;
+
+        const lyrics = newLyrics.split('\n');
+        let currentLyricIndex = 0;
+
+        // 更新歌词
+        function updateLyrics() {
+            lyricsDiv.textContent = lyrics[currentLyricIndex];
+            currentLyricIndex = (currentLyricIndex + 1) % lyrics.length;
+        }
+
+        function drawCD() {
+            if (isPlaying) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(cdCenterX, cdCenterY);
+                ctx.rotate(angle * Math.PI / 180);
+                ctx.translate(-cdCenterX, -cdCenterY);
+
+                // 绘制 CD 外边框，颜色修改为米白色
+                ctx.beginPath();
+                ctx.arc(cdCenterX, cdCenterY, cdRadius + 5, 0, 2 * Math.PI);
+                const outerBorderGradient = ctx.createRadialGradient(cdCenterX, cdCenterY, 0, cdCenterX, cdCenterY, cdRadius + 5);
+                outerBorderGradient.addColorStop(0, '#F5F5DC');
+                outerBorderGradient.addColorStop(1, '#E5E5C6');
+                ctx.fillStyle = outerBorderGradient;
+                ctx.fill();
+
+                // 创建 CD 主体渐变效果，颜色修改为米白色
+                const cdGradient = ctx.createRadialGradient(cdCenterX, cdCenterY, 0, cdCenterX, cdCenterY, cdRadius);
+                cdGradient.addColorStop(0, '#F5F5DC');
+                cdGradient.addColorStop(0.5, '#E5E5C6');
+                cdGradient.addColorStop(1, '#D5D5B6');
+                ctx.beginPath();
+                ctx.arc(cdCenterX, cdCenterY, cdRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = cdGradient;
+                ctx.fill();
+
+                // 添加光盘纹路
+                for (let r = holeRadius + 10; r < cdRadius; r += 5) {
+                    ctx.beginPath();
+                    ctx.arc(cdCenterX, cdCenterY, r, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                // 添加高光效果
+                const highlightGradient = ctx.createRadialGradient(cdCenterX - 30, cdCenterY - 30, 0, cdCenterX - 30, cdCenterY - 30, 80);
+                highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+                highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.beginPath();
+                ctx.arc(cdCenterX - 30, cdCenterY - 30, 80, 0, 2 * Math.PI);
+                ctx.fillStyle = highlightGradient;
+                ctx.fill();
+
+                // CD 中间小圆的颜色修改为莫兰迪淡蓝色
+                ctx.beginPath();
+                ctx.arc(cdCenterX, cdCenterY, holeRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#A5C9CA';
+                ctx.fill();
+
+                // 绘制专辑名字，使用手写体字体，颜色为黑色
+                ctx.font = '30px "Dancing Script", cursive';
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                ctx.fillText(albumName, cdCenterX, cdCenterY);
+
+                // 添加阴影
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 8;
+
+                ctx.restore();
+                angle++;
+                if (angle >= 360) {
+                    angle = 0;
+                }
+            }
+            requestAnimationFrame(drawCD);
+        }
+
+        playButton.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playButton.textContent = isPlaying ? '⏸' : '▶';
+            if (isPlaying) {
+                audio.play();
+                lyricInterval = setInterval(updateLyrics, 3000);
+            } else {
+                audio.pause();
+                clearInterval(lyricInterval);
+            }
+        });
+
+        prevButton.addEventListener('click', () => {
+            // 这里可以添加实际的上一首逻辑
+            console.log('上一首');
+        });
+
+        nextButton.addEventListener('click', () => {
+            // 这里可以添加实际的下一首逻辑
+            console.log('下一首');
+        });
+
+        likeButton.addEventListener('click', () => {
+            likeButton.textContent = likeButton.textContent === '🤍' ? '❤️' : '🤍';
+        });
+
+        // 初始启动歌词滚动
+        lyricInterval = setInterval(updateLyrics, 3000);
+
+        drawCD();
+        audio.play();
+    </script>
+</body>
+
+</html>    
